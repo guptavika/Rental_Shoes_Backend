@@ -1,11 +1,26 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
-exports.checkAdmin = (req, res, next) => {
-  const token = req.headers.authorization;
-  const data = jwt.verify(token, "secret123");
+export const auth = (roles = []) => {
+  return (req, res, next) => {
+    const header = req.headers.authorization;
 
-  if (data.role !== "admin")
-    return res.status(403).json("Access denied");
+    if (!header) {
+      return res.status(401).json({ message: "No token provided" });
+    }
 
-  next();
+    const token = header.split(" ")[1];
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+
+      if (roles.length && !roles.includes(decoded.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      next();
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+  };
 };
