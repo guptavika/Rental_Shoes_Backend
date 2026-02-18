@@ -4,12 +4,15 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
 import dotenv from "dotenv";
+import shoesRoutes from "./routes/shoes.js";
 
 dotenv.config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("uploads")); // image serve
 
 // ===== Register =====
 app.post("/api/register", async (req, res) => {
@@ -25,8 +28,7 @@ app.post("/api/register", async (req, res) => {
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -36,23 +38,30 @@ app.post("/api/login", async (req, res) => {
     const { email, password } = req.body;
     const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
 
-    if (rows.length === 0) return res.status(400).json({ error: "User not found" });
+    if (rows.length === 0)
+      return res.status(400).json({ error: "User not found" });
 
     const user = rows[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ error: "Invalid password" });
+    if (!match)
+      return res.status(400).json({ error: "Invalid password" });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "1d"
-    });
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     res.json({ token, name: user.name, role: user.role });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on http://localhost:${process.env.PORT}`);
+// ===== Shoes Routes =====
+app.use("/api/shoes", shoesRoutes);
+
+// ===== Start Server =====
+app.listen(process.env.PORT || 5000, () => {
+  console.log("Server running on http://localhost:5000");
 });
