@@ -27,6 +27,7 @@ exports.login = (req, res) => {
       role: result[0].role
     }, "secret123");
 
+    
     res.json({
       token,
       role: result[0].role,
