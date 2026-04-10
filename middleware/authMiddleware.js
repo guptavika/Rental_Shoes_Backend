@@ -8,10 +8,11 @@ export const auth = (roles = []) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const token = header.split(" ")[1];
-
     try {
+      const token = header.split(" ")[1];
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
       req.user = decoded;
 
       if (roles.length && !roles.includes(decoded.role)) {
@@ -20,6 +21,7 @@ export const auth = (roles = []) => {
 
       next();
     } catch (err) {
+      console.error("AUTH ERROR:", err);
       return res.status(401).json({ message: "Invalid token" });
     }
   };
