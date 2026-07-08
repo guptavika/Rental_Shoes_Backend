@@ -4,48 +4,87 @@ import { auth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ADD TO CART
+// ================= ADD TO CART =================
 router.post("/", auth(), async (req, res) => {
   try {
-    const { shoe_id } = req.body; // ✅ quantity hata diya
+    const { shoe_id } = req.body;
+    const user_id = req.user.id;
 
-    if (!shoe_id) {
-      return res.status(400).json({ message: "shoe_id missing" });
-    }
-
-    if (!req.user?.id) {
-      return res.status(401).json({ message: "User not found in token" });
-    }
-
-    await db.query(
-      "INSERT INTO cart (user_id, shoe_id) VALUES (?,?)", // ✅ quantity hata diya
-      [req.user.id, shoe_id]
+    const [exist] = await db.query(
+      "SELECT * FROM cart WHERE user_id=? AND shoe_id=?",
+      [user_id, shoe_id],
     );
 
-    res.json({ message: "Added to cart" });
+    if (exist.length > 0) {
+      await db.query("UPDATE cart SET quantity = quantity + 1 WHERE id=?", [
+        exist[0].id,
+      ]);
+    } else {
+      await db.query(
+        "INSERT INTO cart (user_id, shoe_id, quantity) VALUES (?,?,1)",
+        [user_id, shoe_id],
+      );
+    }
 
+    res.json({
+      success: true,
+      message: "Added to Cart",
+    });
   } catch (err) {
-    console.error("🔥 CART ERROR:", err);
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
-// GET CART
+// ================= GET CART =================
 router.get("/", auth(), async (req, res) => {
   try {
-    const [data] = await db.query(
-      `SELECT c.id, s.name, s.price
-       FROM cart c
-       JOIN shoes s ON c.shoe_id = s.id
-       WHERE c.user_id = ?`,  // ✅ quantity hata diya
-      [req.user.id]
+    const [rows] = await db.query(
+      `SELECT
+          cart.id,
+          cart.quantity,
+          shoes.id AS shoe_id,
+          shoes.name,
+          shoes.brand,
+          shoes.price,
+          shoes.image
+       FROM cart
+       JOIN shoes ON cart.shoe_id = shoes.id
+       WHERE cart.user_id=?`,
+      [req.user.id],
     );
 
-    res.json(data);
-
+    res.json(rows);
   } catch (err) {
-    console.error("🔥 GET CART ERROR:", err);
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+// ================= REMOVE CART =================
+router.delete("/:id", auth(), async (req, res) => {
+  try {
+    await db.query("DELETE FROM cart WHERE id=? AND user_id=?", [
+      req.params.id,
+      req.user.id,
+    ]);
+
+    res.json({
+      success: true,
+      message: "Item Removed Successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 

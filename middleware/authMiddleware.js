@@ -5,7 +5,9 @@ export const auth = (roles = []) => {
     const header = req.headers.authorization;
 
     if (!header) {
-      return res.status(401).json({ message: "No token provided" });
+      return res.status(401).json({
+        message: "No token provided",
+      });
     }
 
     try {
@@ -16,13 +18,16 @@ export const auth = (roles = []) => {
       req.user = decoded;
 
       if (roles.length && !roles.includes(decoded.role)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({
+          message: "Access denied",
+        });
       }
 
       next();
     } catch (err) {
-      console.error("AUTH ERROR:", err);
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({
+        message: "Invalid token",
+      });
     }
   };
 };
